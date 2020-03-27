@@ -1,12 +1,11 @@
 import requests
 import urllib
-import numpy as np
+import random
 
 
 class Reporter:
     def __init__(self, markov_chain):
         self.mc = markov_chain
-        self.rouble = 0
         self.starts = [['top', 'news'], ['fresh', 'news'], ['turns', 'out'], ['news', ':']]
         self.ends_backwards = [['at', 'stopped', 'rate', 'exchange', 'ruble\'s', 'to', 'euro'], 
                      ['to', 'developed', 'ruble', 'to', 'rate', 'exchange', 'euro']]
@@ -18,10 +17,10 @@ class Reporter:
             request = requests.get(f'{host}/latest')
             request.raise_for_status()
             result = request.json()
-            self.rouble = result['rates']['RUB']
+            return result['rates']['RUB']
         except requests.HTTPError as er:
             print(f'{er}')
-            self.rouble = 0
+            return 0
 
 
     def __format_report(self, text):
@@ -46,24 +45,18 @@ class Reporter:
 
 
     def report_rouble(self, use_translator=True):
-        self.__get_dollar_rouble_rate()
-        end = self.ends_backwards[np.random.choice(len(self.ends_backwards))].copy()
-        end.insert(0, str(self.rouble))
-        start = self.starts[np.random.choice(len(self.starts))].copy()
+        rouble = self.__get_dollar_rouble_rate()
+        end = random.choices(self.ends_backwards, k=1)[0]
+        end.insert(0, str(rouble))
+        start = random.choices(self.starts, k=1)[0]
 
         for _ in range(2):
-            start.append(self.mc.predict_next(start[len(start) - 2], start[len(start) - 1]))
-            end.append(self.mc.predict_prev(end[len(end) - 2], end[len(end) - 1]))
+            start.append(self.mc.predict_next(start[-2], start[-1]))
+            end.append(self.mc.predict_prev(end[-2], end[-1]))
 
-        try:
-            start.append(self.mc.predict_mid(start[len(start) - 1], end[len(end) - 1]))
-        except ValueError as er:
-            start.append('is that')
+        start.append(self.mc.predict_mid(start[-1], end[-1]))
 
-        for i in end[::-1]:
-            start.append(i)
-
-        report = ' '.join(start)
+        report = ' '.join(start + end[::-1])
 
         if use_translator:
             report = self.__translate_to_russian(report)[0][0][0]

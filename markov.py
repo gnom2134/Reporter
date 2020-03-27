@@ -1,5 +1,4 @@
-import numpy as np
-
+import random
 
 class MarkovChainTrigrams:
     def __init__(self):
@@ -7,7 +6,7 @@ class MarkovChainTrigrams:
         self.backward_memory = {}
 
 
-    def add_trigram(self, first, second, third):
+    def __add_trigram(self, first, second, third):
         # forward
         if first not in self.forward_memory:
             self.forward_memory[first] = {}
@@ -28,32 +27,27 @@ class MarkovChainTrigrams:
 
 
     def add_text(self, text):
+        text = text.lower()
         words = text.split()
-        for i in range(len(words)):
-            words[i] = words[i].lower()
-
-        trigrams = [(words[i], words[i+1], words[i+2]) for i in range(len(words) - 2) \
-                  if words[i] != '' and words[i+1] != '' and words[i+2] != '']
+        words = list(filter(lambda x: x != '', words))
+        trigrams = [words[i:i+3] for i in range(len(words) - 2)]
         for i in trigrams:
-            self.add_trigram(i[0], i[1], i[2])
+            self.__add_trigram(i[0], i[1], i[2])
 
 
     def predict_next(self, word1, word2):
-        return np.random.choice(list(self.forward_memory[word1][word2].keys()), 
-                                1, p=np.array(list(self.forward_memory[word1][word2].values())) \
-                                / sum(self.forward_memory[word1][word2].values()))[0]
+        values = self.forward_memory[word1][word2].values()
+        return random.choices(list(self.forward_memory[word1][word2].keys()), weights=values, k=1)[0]
 
 
     def predict_prev(self, word3, word2):
-        return np.random.choice(list(self.backward_memory[word3][word2].keys()), 
-                                1, p=np.array(list(self.backward_memory[word3][word2].values())) \
-                                / sum(self.backward_memory[word3][word2].values()))[0]
+        values = self.backward_memory[word3][word2].values()
+        return random.choices(list(self.backward_memory[word3][word2].keys()), weights=values, k=1)[0]
 
 
     def predict_mid(self, word1, word3):
-        choose_from = list(set(self.forward_memory[word1].keys()) & set(self.backward_memory[word3].keys()))
-        return np.random.choice(choose_from)
-        return np.random.choice(list(self.middle_memory[word1][word3].keys()), 
-                                1, p=np.array(list(self.middle_memory[word1][word3].values())) \
-                                / sum(self.middle_memory[word1][word3].values()))[0]
+        choose_from = list(set(self.forward_memory[word1]) & set(self.backward_memory[word3]))
+        if len(choose_from) == 0:
+            choose_from.append('is that')
+        return random.choices(choose_from, k=1)[0]
 
